@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 // Note: The package name is @mcp/sdk as per the latest package.json
-const { McpServer, McpTool } = require('@mcp/sdk');
-const { v4: uuidv4 } = require('uuid');
+import { McpServer, McpTool } from '@mcp/sdk';
+import { v4 as uuidv4 } from 'uuid';
 
 const port = process.env.PORT || 3000;
 const app = express();
