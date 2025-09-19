@@ -1,130 +1,154 @@
-import { McpServer, McpTool, McpToolStream, McpBinary } from 'mcp-sdk';
-import { z } from 'zod';
-import { config } from 'dotenv';
-import OpenAI from 'openai';
+const express = require('express');
+// Note: The package name is @mcp/sdk as per the latest package.json
+const { McpServer, McpTool } = require('@mcp/sdk');
+const { v4: uuidv4 } = require('uuid');
 
-// Load environment variables from .env file
-config();
+const port = process.env.PORT || 3000;
+const app = express();
 
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-const openAIApiKey = process.env.OPENAI_API_KEY;
+// This entire block related to the API key is now commented out.
+// const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+//
+// if (!OPENAI_API_KEY) {
+//   console.error("OPENAI_API_KEY environment variable is not set.");
+//   process.exit(1);
+// }
 
-/*
-if (!openAIApiKey) {
-  throw new Error("OPENAI_API_KEY is not defined in the environment variables.");
-}
-*/
+class MedicalExamVerifierTool extends McpTool {
+  constructor() {
+    super();
+    this.name = 'medical_exam_verifier';
+    this.description = 'Verifies if a file is a specific type of medical exam';
+    this.inputs = {
+      file: {
+        type: 'file',
+        description: 'The medical exam file (e.g., PDF, JPG, PNG)',
+        required: true,
+      },
+      examType: {
+        type: 'string',
+        description: 'The type of medical exam (e.g., "x-ray", "blood test report")',
+        required: true,
+      },
+    };
+    this.outputs = {
+      probability: {
+        type: 'number',
+        description: 'A probability score (0 to 1) of the file matching the exam type.',
+      },
+      is_verified: {
+        type: 'boolean',
+        description: 'True if the file is verified to be of the specified type, false otherwise.',
+      },
+      reasoning: {
+        type: 'string',
+        description: 'An explanation of the verification result.',
+      },
+    };
+  }
 
-const openai = new OpenAI({ apiKey: openAIApiKey });
+  async execute(inputs, context) {
+    console.log("Executing tool with inputs:", inputs);
+    const { file, examType } = inputs;
 
-// Define the input schema for the tool
-const medicalExamInputSchema = z.object({
-  examFile: McpBinary.schema.describe("The binary file of the medical exam (e.g., PDF, JPG, PNG)."),
-  examType: z.string().describe("The type of medical exam (e.g., 'x-ray', 'blood test', 'MRI scan')."),
-});
-
-// Define the output schema for the tool
-const medicalExamOutputSchema = z.object({
-  probability: z.number().min(0).max(1).describe("A probability score between 0 and 1 indicating the likelihood that the file matches the specified exam type."),
-  confidence: z.enum(["high", "medium", "low"]).describe("The confidence level of the verification."),
-  reasoning: z.string().describe("An explanation for the verification result."),
-});
-
-// Implement the tool logic
-const medicalExamVerifierTool: McpTool<typeof medicalExamInputSchema, typeof medicalExamOutputSchema> = {
-  name: 'verify_medical_exam',
-  description: 'Verifies if a given file is a medical exam of a specific type and returns a probability score.',
-  inputSchema: medicalExamInputSchema,
-  outputSchema: medicalExamOutputSchema,
-  async run(input: z.infer<typeof medicalExamInputSchema>, stream: McpToolStream<typeof medicalExamOutputSchema>) {
-    /*
-    // START - REAL OPENAI IMPLEMENTATION (COMMENTED OUT)
-    try {
-      stream.progress('Analyzing the provided medical document...');
-
-      const base64Image = Buffer.from(input.examFile.buffer).toString('base64');
-      const dataUrl = `data:${input.examFile.contentType};base64,${base64Image}`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert medical document analyst. Your task is to determine if the provided image is a specific type of medical exam. Respond with a JSON object containing 'probability' (a number 0-1), 'confidence' ('high', 'medium', or 'low'), and 'reasoning' (a brief explanation)."
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: `Is this document a(n) "${input.examType}"?` },
-              {
-                type: "image_url",
-                image_url: {
-                  "url": dataUrl,
-                },
-              },
-            ],
-          },
-        ],
-        max_tokens: 300,
-        response_format: { type: "json_object" },
-      });
-
-      const messageContent = response.choices[0]?.message?.content;
-
-      if (!messageContent) {
-        throw new Error('No content in OpenAI response.');
-      }
-
-      const parsedResult = JSON.parse(messageContent);
-      const validation = medicalExamOutputSchema.safeParse(parsedResult);
-
-      if (!validation.success) {
-         throw new Error(`Invalid response format from the model: ${validation.error.message}`);
-      }
-      
-      stream.progress('Analysis complete. Returning results.');
-      stream.end(validation.data);
-
-    } catch (error) {
-      console.error('Error during medical exam verification:', error);
-      stream.error(new Error('Failed to verify the medical exam due to an internal error.'));
+    if (!file || !file.data || !examType) {
+      return {
+        probability: 0,
+        is_verified: false,
+        reasoning: 'Error: Missing file data or exam type in the input.',
+      };
     }
-    // END - REAL OPENAI IMPLEMENTATION (COMMENTED OUT)
-    */
 
-    // START - MOCK IMPLEMENTATION FOR TESTING
-    stream.progress('Generating mock analysis...');
+    const fileContent = Buffer.from(file.data, 'base64');
+    console.log(`Received file of size ${fileContent.length} bytes for exam type: ${examType}`);
 
-    // Simulate a network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // --- MOCK IMPLEMENTATION (No API Key Needed) ---
+    // Simulating a delay and returning a random result for testing.
+    console.log("Using mock implementation. Simulating analysis...");
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network/analysis delay
+
+    const randomProbability = Math.random();
+    const isVerified = randomProbability > 0.5;
+    const mockReasoning = `This is a mock response. The analysis was simulated. The file appears ${isVerified ? 'to be' : 'not to be'} a valid '${examType}' document.`;
     
-    const confidenceLevels: ("high" | "medium" | "low")[] = ["high", "medium", "low"];
-    const randomConfidence = confidenceLevels[Math.floor(Math.random() * confidenceLevels.length)];
-    
-    const mockOutput = {
-        probability: Math.random(),
-        confidence: randomConfidence,
-        reasoning: "This is a mock response because the OpenAI API is currently disabled."
+    const result = {
+        probability: randomProbability,
+        is_verified: isVerified,
+        reasoning: mockReasoning
     };
 
-    stream.progress('Mock analysis complete.');
-    stream.end(mockOutput);
-    // END - MOCK IMPLEMENTATION FOR TESTING
-  },
-};
+    console.log("Mock result:", result);
+    return result;
 
-// Create and start the MCP server
-const server = new McpServer({
-  port: port,
-  tools: [medicalExamVerifierTool],
-  // You can add authentication here if needed
-  // auth: (token) => { ... } 
+    /*
+    // --- REAL IMPLEMENTATION (Requires OpenAI API Key) ---
+    // When you are ready, uncomment this block and remove the mock implementation above.
+
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Analyze the attached image/document. Is this a medical exam of the type "${examType}"? Respond with a JSON object containing three fields: "probability" (a float from 0.0 to 1.0 indicating your confidence), "is_verified" (a boolean), and "reasoning" (a brief explanation).`
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    "url": `data:${file.mediaType};base64,${file.data}`
+                  }
+                }
+              ]
+            }
+          ],
+          max_tokens: 300
+        })
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`OpenAI API error: ${response.status} ${errorBody}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      
+      // Clean up the response from the model
+      const jsonString = content.replace(/```json\n|\n```/g, '').trim();
+      const result = JSON.parse(jsonString);
+
+      console.log("OpenAI analysis result:", result);
+      return result;
+
+    } catch (error) {
+      console.error("Error during OpenAI API call:", error);
+      return {
+        probability: 0,
+        is_verified: false,
+        reasoning: `An error occurred during analysis: ${error.message}`
+      };
+    }
+    */
+  }
+}
+
+const server = new McpServer();
+const medicalTool = new MedicalExamVerifierTool();
+server.registerTool('medical_exam_verifier', medicalTool);
+
+app.use(express.json({ limit: '50mb' })); // Increased limit for larger files
+app.post('/mcp', server.createExpressHandler());
+
+app.listen(port, () => {
+  console.log(`MCP server listening on port ${port}`);
 });
-
-server.start().then(() => {
-  console.log(`MCP server is running on port ${port}`);
-}).catch(error => {
-    console.error("Failed to start MCP server:", error);
-});
-
 
