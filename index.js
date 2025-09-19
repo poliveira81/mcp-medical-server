@@ -9,9 +9,11 @@ config();
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const openAIApiKey = process.env.OPENAI_API_KEY;
 
+/*
 if (!openAIApiKey) {
   throw new Error("OPENAI_API_KEY is not defined in the environment variables.");
 }
+*/
 
 const openai = new OpenAI({ apiKey: openAIApiKey });
 
@@ -35,6 +37,8 @@ const medicalExamVerifierTool: McpTool<typeof medicalExamInputSchema, typeof med
   inputSchema: medicalExamInputSchema,
   outputSchema: medicalExamOutputSchema,
   async run(input: z.infer<typeof medicalExamInputSchema>, stream: McpToolStream<typeof medicalExamOutputSchema>) {
+    /*
+    // START - REAL OPENAI IMPLEMENTATION (COMMENTED OUT)
     try {
       stream.progress('Analyzing the provided medical document...');
 
@@ -85,6 +89,27 @@ const medicalExamVerifierTool: McpTool<typeof medicalExamInputSchema, typeof med
       console.error('Error during medical exam verification:', error);
       stream.error(new Error('Failed to verify the medical exam due to an internal error.'));
     }
+    // END - REAL OPENAI IMPLEMENTATION (COMMENTED OUT)
+    */
+
+    // START - MOCK IMPLEMENTATION FOR TESTING
+    stream.progress('Generating mock analysis...');
+
+    // Simulate a network delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const confidenceLevels: ("high" | "medium" | "low")[] = ["high", "medium", "low"];
+    const randomConfidence = confidenceLevels[Math.floor(Math.random() * confidenceLevels.length)];
+    
+    const mockOutput = {
+        probability: Math.random(),
+        confidence: randomConfidence,
+        reasoning: "This is a mock response because the OpenAI API is currently disabled."
+    };
+
+    stream.progress('Mock analysis complete.');
+    stream.end(mockOutput);
+    // END - MOCK IMPLEMENTATION FOR TESTING
   },
 };
 
@@ -101,3 +126,5 @@ server.start().then(() => {
 }).catch(error => {
     console.error("Failed to start MCP server:", error);
 });
+
+
