@@ -1,0 +1,27 @@
+{
+  "name": "mcp-medical-server",
+  "version": "1.0.0",
+  "description": "An MCP server to verify medical exam documents.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "mcp",
+    "nodejs",
+    "azure"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mcp-sdk": "^0.2.2",
+    "zod": "^3.23.8",
+    "dotenv": "^16.4.5",
+    "openai": "^4.47.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
