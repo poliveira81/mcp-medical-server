@@ -1,6 +1,7 @@
 import express from 'express';
 // Note: The package name is @mcp/sdk as per the latest package.json
-import { McpServer, McpTool } from '@mcp/sdk';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { v4 as uuidv4 } from 'uuid';
 
 const port = process.env.PORT || 3000;
@@ -151,4 +152,5 @@ app.post('/mcp', server.createExpressHandler());
 app.listen(port, () => {
   console.log(`MCP server listening on port ${port}`);
 });
+
 
